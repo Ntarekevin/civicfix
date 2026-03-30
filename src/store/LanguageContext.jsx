@@ -2,7 +2,13 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { translations } from './translations';
 
-const LanguageContext = createContext();
+const DEFAULT_CONTEXT = {
+  language: 'English',
+  setLanguage: () => { },
+  t: (key) => key,
+};
+
+const LanguageContext = createContext(DEFAULT_CONTEXT);
 
 export const LanguageProvider = ({ children }) => {
   const [language, setLanguage] = useState('English');
