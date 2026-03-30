@@ -1,11 +1,69 @@
 "use client";
-import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { getPublicReports } from '../services/api';
 import PostCreation from '../components/PostCreation';
 import PostCard from '../components/PostCard';
 import RightSidebar from '../components/RightSidebar';
 import { useLanguage } from '../store/LanguageContext';
+
+// Separated so useSearchParams is inside a Suspense boundary
+function ReportFeed({ reports, loading, activeTag }) {
+  const { t } = useLanguage();
+  const searchParams = useSearchParams();
+  const highlightedId = searchParams.get('id');
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="bg-white dark:bg-surface rounded-2xl p-6 shadow-sm border dark:border-border animate-pulse">
+            <div className="flex gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-700"></div>
+              <div className="space-y-2 flex-1">
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
+                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+              </div>
+            </div>
+            <div className="h-20 bg-gray-100 dark:bg-gray-800 rounded-xl mb-4"></div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (reports.length > 0) {
+    return (
+      <>
+        {reports.map((report) => (
+          <PostCard
+            key={report.id}
+            isHighlighted={String(report.id) === highlightedId}
+            report={{
+              id: report.id,
+              publicId: report.public_id,
+              content: report.description,
+              timestamp: new Date(report.created_at).toLocaleDateString(),
+              location: report.city || "Rwanda",
+              userRole: t('verifiedResident'),
+              tags: [],
+              commentsCount: report.comments?.length || 0,
+              media: report.media || [],
+            }}
+          />
+        ))}
+      </>
+    );
+  }
+
+  return (
+    <div className="text-center py-20 bg-surface rounded-2xl border dark:border-gray-800">
+      <p className="text-gray-500">
+        {activeTag ? `${t('noReportsFound')} ${activeTag}` : t('noReportsFoundDefault')}
+      </p>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const { t } = useLanguage();
@@ -37,9 +95,6 @@ export default function DashboardPage() {
     setActiveTag(tag);
   };
 
-  const pathname = usePathname();
-  const highlightedId = new URLSearchParams(useSearchParams().toString()).get('id');
-
   return (
     <div className="flex gap-8">
       {/* Main Feed Column */}
@@ -66,46 +121,17 @@ export default function DashboardPage() {
             {t('recentReports')}
           </h2>
 
-          {loading ? (
+          <Suspense fallback={
             <div className="space-y-6">
               {[1, 2, 3].map(i => (
                 <div key={i} className="bg-white dark:bg-surface rounded-2xl p-6 shadow-sm border dark:border-border animate-pulse">
-                  <div className="flex gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-700"></div>
-                    <div className="space-y-2 flex-1">
-                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
-                      <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
-                    </div>
-                  </div>
-                  <div className="h-20 bg-gray-100 dark:bg-gray-800 rounded-xl mb-4"></div>
+                  <div className="h-20 bg-gray-100 dark:bg-gray-800 rounded-xl"></div>
                 </div>
               ))}
             </div>
-          ) : reports.length > 0 ? (
-            reports.map((report) => (
-              <PostCard
-                key={report.id}
-                isHighlighted={String(report.id) === highlightedId}
-                report={{
-                  id: report.id,
-                  publicId: report.public_id,
-                  content: report.description,
-                  timestamp: new Date(report.created_at).toLocaleDateString(),
-                  location: report.city || "Rwanda",
-                  userRole: t('verifiedResident'),
-                  tags: [],
-                  commentsCount: report.comments?.length || 0,
-                  media: report.media || [], // Pass full media array
-                }}
-              />
-            ))
-          ) : (
-            <div className="text-center py-20 bg-surface rounded-2xl border dark:border-gray-800">
-              <p className="text-gray-500">
-                {activeTag ? `${t('noReportsFound')} ${activeTag}` : t('noReportsFoundDefault')}
-              </p>
-            </div>
-          )}
+          }>
+            <ReportFeed reports={reports} loading={loading} activeTag={activeTag} />
+          </Suspense>
         </div>
       </div>
 

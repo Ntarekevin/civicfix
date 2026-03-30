@@ -4,7 +4,11 @@ import { auth } from '@/utils/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { createClient } from '@/utils/supabase/client';
 
-const AuthContext = createContext();
+const AuthContext = createContext({
+  user: null,
+  loading: false,
+  setUser: () => { },
+});
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {

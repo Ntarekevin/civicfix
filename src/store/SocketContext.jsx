@@ -3,7 +3,13 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useAuth } from './AuthContext';
 
-const SocketContext = createContext();
+const SocketContext = createContext({
+  socket: null,
+  authorityNotifications: [],
+  citizenNotifications: [],
+  setAuthorityNotifications: () => { },
+  setCitizenNotifications: () => { },
+});
 
 export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
@@ -14,7 +20,7 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     const supabase = createClient();
-    
+
     // Subscribe to public reports
     const reportsSub = supabase.channel('public-reports')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'reports' }, payload => {
@@ -26,12 +32,12 @@ export const SocketProvider = ({ children }) => {
         window.dispatchEvent(event);
       })
       .subscribe();
-      
+
     // Subscribe to notifications
     const notifSub = supabase.channel('public-notifications')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, payload => {
         const notif = payload.new;
-        
+
         // Filter: only show if for this user or for all citizens (no target_user_id)
         if (notif.target_user_id) {
           if (user && notif.target_user_id === user.id) {
@@ -40,7 +46,7 @@ export const SocketProvider = ({ children }) => {
         } else {
           setCitizenNotifications(prev => [notif, ...prev]);
         }
-        
+
         // Browser Notification Logic (only if relevant to current session)
         const isSelfNotif = notif.target_user_id === user?.id;
         const isCitizenNotif = !notif.target_user_id;
@@ -50,7 +56,7 @@ export const SocketProvider = ({ children }) => {
         }
       })
       .subscribe();
-      
+
     // Mock socket interface for components migrating from socket.io-client
     const listeners = new Map();
     const mockSocket = {
@@ -67,7 +73,7 @@ export const SocketProvider = ({ children }) => {
       },
       emit: () => { /* No-op: Supabase Realtime Broadcast or DB triggers handle data flow */ }
     };
-    
+
     setSocket(mockSocket);
 
     return () => {
@@ -77,9 +83,9 @@ export const SocketProvider = ({ children }) => {
   }, []);
 
   return (
-    <SocketContext.Provider value={{ 
-      socket, 
-      authorityNotifications, 
+    <SocketContext.Provider value={{
+      socket,
+      authorityNotifications,
       citizenNotifications,
       setAuthorityNotifications,
       setCitizenNotifications

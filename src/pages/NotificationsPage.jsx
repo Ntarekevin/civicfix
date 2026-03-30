@@ -9,7 +9,11 @@ export default function NotificationsPage() {
   const { t } = useLanguage();
   const router = useRouter();
   const { authorityNotifications, citizenNotifications } = useSocket() || {};
-  const user = JSON.parse(localStorage.getItem('civifix_user') || 'null');
+
+  const [user] = useState(() => {
+    if (typeof window === 'undefined') return null;
+    return JSON.parse(localStorage.getItem('civifix_user') || 'null');
+  });
   const isAdmin = user && ['admin', 'authority', 'official'].includes(user.role);
 
   const liveNotifications = isAdmin ? (authorityNotifications || []) : (citizenNotifications || []);
